@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AFL-3.0
-import "./MonsterTrade.sol";
-import "./interface/IERC721.sol";
 
 pragma solidity 0.8.15;
+
+import "./MonsterTrade.sol";
+import "./interface/IERC721.sol";
 
 contract MonsterFactory {
     address public immutable operator = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AFL-3.0
+
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -15,7 +16,7 @@ contract MonsterNFT is ERC721URIStorage {
     struct NFTVoucher {
       string name;
       string description;
-      string uri;
+      string ipfsUrl;
       uint price;
     }
 
@@ -32,24 +33,27 @@ contract MonsterNFT is ERC721URIStorage {
       _;
     }
 
+
     uint public TotalSupply = 1;
+
     event NftMinting (uint _tokenId, uint _price);
 
     mapping(uint => NFTVoucher) public NFTVouchers;
+    mapping(bytes => bool) public NFTVoucher_Signatures;
 
     // @ Minting NFT
     function mintNFT (
       string memory _name,
       string memory _description,
-      string memory _uri
+      string memory _url
     ) external payable 
       lockChecker
       returns (NFTVoucher memory)
     {
       require(msg.value >= mintingPrice, "ERR : Not Enough Money");
       _mint(msg.sender, TotalSupply);
-      _setTokenURI(TotalSupply, _uri);
-      NFTVouchers[TotalSupply] = NFTVoucher(_name, _description, _uri,mintingPrice);
+      _setTokenURI(TotalSupply, _url);
+      NFTVouchers[TotalSupply] = NFTVoucher(_name, _description, _url, mintingPrice);
 
       emit NftMinting(TotalSupply, mintingPrice);
       TotalSupply++;
@@ -64,7 +68,12 @@ contract MonsterNFT is ERC721URIStorage {
 
     // @ Lazy Minting
     function getMsgHash (NFTVoucher memory _voucher) public pure returns(bytes32 _msgHash){
-      _msgHash = keccak256(abi.encodePacked(_voucher.name, _voucher.description, _voucher.uri, _voucher.price));
+      _msgHash = keccak256(abi.encodePacked(
+                            _voucher.name, 
+                            _voucher.description, 
+                            _voucher.ipfsUrl, 
+                            _voucher.price
+                          ));
     }
 
     function redeemNFT (
@@ -78,23 +87,28 @@ contract MonsterNFT is ERC721URIStorage {
       {
         require(!lock, "Currently Locked");
         require(_verify(_signer, _sig, _voucher), "Verify Failed");
-        require(msg.value >= _voucher.price, "Sent Price is Not Enough");
-        
-        lock = true;
+        require(msg.value >= _voucher.price, "Sent Price Not Enough");
+        require(!NFTVoucher_Signatures[_sig], "Already Minted");
 
+        lock = true;
+        // @ Minting & Creator -> Redeemer Transfer NFT
         _mint(_signer, TotalSupply);
-        _setTokenURI(TotalSupply, _voucher.uri);
+        _setTokenURI(TotalSupply, _voucher.ipfsUrl);
         _transfer(_signer, _redeemer, TotalSupply);
 
+        // @ Emit Event
         emit NftMinting(TotalSupply, _voucher.price);
+
+        // @ Record;
         NFTVouchers[TotalSupply] = _voucher;
+        NFTVoucher_Signatures[_sig] = true;
 
         TotalSupply++;
 
         lock = false;
+
         return TotalSupply-1;
       }
-
 
     // @ Only Owner Feature
     function setLocking () external onlyOwner returns (bool) {
@@ -107,7 +121,7 @@ contract MonsterNFT is ERC721URIStorage {
       return owner;
     }
 
-    // @ ECDSA Feature
+    // @ EC Verification Feature
     function _verify (
       address _signer, 
       bytes memory _sig, 
