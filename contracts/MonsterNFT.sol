@@ -51,9 +51,15 @@ contract MonsterNFT is ERC721URIStorage {
       returns (NFTVoucher memory)
     {
       require(msg.value >= mintingPrice, "ERR : Not Enough Money");
+
+      // @ Transfer NFT To Buyer;
       _mint(msg.sender, TotalSupply);
       _setTokenURI(TotalSupply, _url);
       NFTVouchers[TotalSupply] = NFTVoucher(_name, _description, _url, mintingPrice);
+
+      // @ Transfer Coin To Owner;
+      (bool sent, ) = payable(owner).call{ value : msg.value }("");
+      require(sent, "ERR : Transfer Money");
 
       emit NftMinting(TotalSupply, mintingPrice);
       TotalSupply++;
@@ -91,12 +97,17 @@ contract MonsterNFT is ERC721URIStorage {
         require(!NFTVoucher_Signatures[_sig], "Already Minted");
 
         lock = true;
-        // @ Minting & Creator -> Redeemer Transfer NFT
+
+        // @ Minting & Creator -> Redeemer Transfer NFT;
         _mint(_signer, TotalSupply);
         _setTokenURI(TotalSupply, _voucher.ipfsUrl);
         _transfer(_signer, _redeemer, TotalSupply);
 
-        // @ Emit Event
+        // @ Transfer Coin To _signer;
+        (bool sent, ) = payable(_signer).call{ value : msg.value }("");
+        require(sent, "ERR : Transfer Money");
+
+        // @ Emit Event;
         emit NftMinting(TotalSupply, _voucher.price);
 
         // @ Record;
