@@ -1,15 +1,5 @@
-# Basic Sample Hardhat Project
+# LazyMinting NFT Marketplace DEMO
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+## Contract 구성
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+![contract_Graph](https://user-images.githubusercontent.com/66409384/180267157-85d0bf2e-2cb6-48ef-bbd7-0e88bf1238fe.svg)
