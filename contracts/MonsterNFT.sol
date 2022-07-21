@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AFL-3.0
+// SPDX-License-Identifier: Unlicense
 
 pragma solidity 0.8.15;
 
@@ -6,11 +6,11 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 contract MonsterNFT is ERC721URIStorage {
     address public owner;
+    uint public mintingPrice;
     bool lock = false;
-    uint mintingPrice;
 
     constructor() ERC721("Monster", "MON") {
-      owner = msg.sender;
+      owner = payable(msg.sender);
     }
 
     struct NFTVoucher {
@@ -21,7 +21,7 @@ contract MonsterNFT is ERC721URIStorage {
     }
 
     modifier onlyOwner {
-      require(msg.sender == owner, "Only Owner Function");
+      require(msg.sender == owner, "ERR : Not Authorized");
       _;
     }
 
@@ -33,13 +33,13 @@ contract MonsterNFT is ERC721URIStorage {
       _;
     }
 
-
     uint public TotalSupply = 1;
 
-    event NftMinting (uint _tokenId, uint _price);
+    event NftMinting (uint _tokenId, uint _price, address _minter);
 
     mapping(uint => NFTVoucher) public NFTVouchers;
-    mapping(bytes => bool) public NFTVoucher_Signatures;
+
+    receive() external payable {}
 
     // @ Minting NFT
     function mintNFT (
@@ -51,23 +51,26 @@ contract MonsterNFT is ERC721URIStorage {
       returns (NFTVoucher memory)
     {
       require(msg.value >= mintingPrice, "ERR : Not Enough Money");
+      lock = true;
 
       // @ Transfer NFT To Buyer;
       _mint(msg.sender, TotalSupply);
       _setTokenURI(TotalSupply, _url);
       NFTVouchers[TotalSupply] = NFTVoucher(_name, _description, _url, mintingPrice);
 
-      // @ Transfer Coin To Owner;
-      (bool sent, ) = payable(owner).call{ value : msg.value }("");
+      // @ Transfer Coin To _signer;
+      (bool sent, ) = owner.call{ value : payable(address(this)).balance }("");
       require(sent, "ERR : Transfer Money");
-
-      emit NftMinting(TotalSupply, mintingPrice);
+    
+      emit NftMinting(TotalSupply, mintingPrice, msg.sender);
       TotalSupply++;
+
+      lock = false;
       
       return NFTVouchers[TotalSupply-1];
     }
 
-    function setPrice(uint _newPrice) onlyOwner external returns(uint){
+    function setPrice(uint _newPrice) external onlyOwner returns(uint){
       mintingPrice = _newPrice;
       return mintingPrice;
     }
@@ -83,18 +86,17 @@ contract MonsterNFT is ERC721URIStorage {
     }
 
     function redeemNFT (
-      address _redeemer, 
-      address _signer, 
+      address payable _redeemer, 
+      address payable _signer, 
       bytes memory _sig, 
       NFTVoucher calldata _voucher
       ) external payable 
       lockChecker
       returns (uint256) 
       {
-        require(!lock, "Currently Locked");
-        require(_verify(_signer, _sig, _voucher), "Verify Failed");
-        require(msg.value >= _voucher.price, "Sent Price Not Enough");
-        require(!NFTVoucher_Signatures[_sig], "Already Minted");
+        require(!lock, "ERR : Currently Locked");
+        require(_verify(_signer, _sig, _voucher), "ERR : Verify Failed");
+        require(msg.value >= _voucher.price, "ERR : Sent Price Not Enough");
 
         lock = true;
 
@@ -104,20 +106,19 @@ contract MonsterNFT is ERC721URIStorage {
         _transfer(_signer, _redeemer, TotalSupply);
 
         // @ Transfer Coin To _signer;
-        (bool sent, ) = payable(_signer).call{ value : msg.value }("");
+        (bool sent, ) = _signer.call{ value : payable(address(this)).balance }("");
         require(sent, "ERR : Transfer Money");
 
         // @ Emit Event;
-        emit NftMinting(TotalSupply, _voucher.price);
+        emit NftMinting(TotalSupply, _voucher.price, _redeemer);
 
         // @ Record;
         NFTVouchers[TotalSupply] = _voucher;
-        NFTVoucher_Signatures[_sig] = true;
-
+        
         TotalSupply++;
 
         lock = false;
-
+        
         return TotalSupply-1;
       }
 
@@ -180,4 +181,19 @@ contract MonsterNFT is ERC721URIStorage {
       return (r, s, v);
       }
 
+
+    // @ Emergency Feature;
+    function checkBalance() external view onlyOwner returns(uint) {
+      return address(this).balance;
+    }
+
+    function emergencyWithdrawal() external payable onlyOwner {
+      (bool sent, ) = owner.call{ value : payable(address(this)).balance }("");
+      require(sent, "ERR : Transfer Money");
+    }
+    
+    function emergencyWithdrawal_transfer(address payable _to, uint _value) external payable onlyOwner {
+      (bool sent, ) = _to.call{ value : _value }("");
+      require(sent, "ERR : Transfer Money");
+    }
 }
