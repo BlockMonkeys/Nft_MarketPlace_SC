@@ -192,6 +192,6 @@ describe("MonsterNFT", function () {
     const after_trudy_balance = await ethers.provider.getBalance(trudy.address);
     const after_trudy_balance_ether = await ethers.utils.formatEther(after_trudy_balance);
 
-    expect(after_trudy_balance_ether).to.be.gt(before_trudy_balance_before_ether);
+    expect(Number(after_trudy_balance_ether)).to.be.gt(Number(before_trudy_balance_before_ether));
   })
 });
