@@ -4,9 +4,7 @@
 
 Web Demo URL : https://nft.monstercoders.io (메타마스크 설치 필요)
 
-Goerli Test Network : https://goerli.etherscan.io/address/0x5a5eb29B037fA4b56D121e2E73D642d544B5Dce6#code
-
-Contract (Verified) : https://goerli.etherscan.io/address/0x5a5eb29B037fA4b56D121e2E73D642d544B5Dce6#code
+Contract : https://goerli.etherscan.io/address/0x5a5eb29B037fA4b56D121e2E73D642d544B5Dce6#code
 
 Front-End Source : https://github.com/BlockMonkeys/Nft_MarketPlace_FE
 
