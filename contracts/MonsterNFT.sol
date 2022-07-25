@@ -28,7 +28,9 @@ contract MonsterNFT is ERC721URIStorage {
     modifier lockChecker {
       if(msg.sender == owner) {
         _;
-      }
+        return;
+      } 
+
       require(!lock, "ERR : Currently Locked");
       _;
     }
@@ -38,8 +40,28 @@ contract MonsterNFT is ERC721URIStorage {
     event NftMinting (uint _tokenId, uint _price, address _minter);
 
     mapping(uint => NFTVoucher) public NFTVouchers;
+    mapping(bytes => bool) public signatureGarbage;
 
     receive() external payable {}
+
+    struct nftInfo {
+      uint tokenId;
+      string tokenURI;
+    }
+
+    function getNFTsbyOwner(address _ownerAdrs) external view returns (nftInfo[] memory){
+      nftInfo[] memory result = new nftInfo[](balanceOf(_ownerAdrs));
+      uint x = 0;
+      
+      for(uint i=1; i < TotalSupply; i++){
+          if(ownerOf(i) == _ownerAdrs) {
+            result[x] = nftInfo(i, tokenURI(i));
+            x++;
+          }
+      }
+
+      return result;
+    }
 
     // @ Minting NFT
     function mintNFT (
@@ -56,6 +78,7 @@ contract MonsterNFT is ERC721URIStorage {
       // @ Transfer NFT To Buyer;
       _mint(msg.sender, TotalSupply);
       _setTokenURI(TotalSupply, _url);
+
       NFTVouchers[TotalSupply] = NFTVoucher(_name, _description, _url, mintingPrice);
 
       // @ Transfer Coin To _signer;
@@ -63,6 +86,7 @@ contract MonsterNFT is ERC721URIStorage {
       require(sent, "ERR : Transfer Money");
     
       emit NftMinting(TotalSupply, mintingPrice, msg.sender);
+
       TotalSupply++;
 
       lock = false;
@@ -97,6 +121,7 @@ contract MonsterNFT is ERC721URIStorage {
         require(!lock, "ERR : Currently Locked");
         require(_verify(_signer, _sig, _voucher), "ERR : Verify Failed");
         require(msg.value >= _voucher.price, "ERR : Sent Price Not Enough");
+        require(!signatureGarbage[_sig], "ERR : Signatrue Expired");
 
         lock = true;
 
@@ -114,7 +139,8 @@ contract MonsterNFT is ERC721URIStorage {
 
         // @ Record;
         NFTVouchers[TotalSupply] = _voucher;
-        
+        signatureGarbage[_sig] = true;
+
         TotalSupply++;
 
         lock = false;
